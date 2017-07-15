@@ -15,7 +15,7 @@
 
 from base import *
 
-class FRR(Container):
+class FRRouting(Container):
     def __init__(self, name, host_dir, guest_dir='/root/config', image='bgperf/frr'):
         super(FRR, self).__init__(name, image, host_dir, guest_dir)
 
@@ -65,7 +65,7 @@ RUN cd frr && make -j2 && make check && make install
 # is this still necessary?
 RUN ldconfig
 '''.format(checkout)
-        super(FRR, cls).build_image(force, tag, nocache)
+        super(FRRouting, cls).build_image(force, tag, nocache)
 
 
 class FRRoutingTarget(FRRouting, Target):
