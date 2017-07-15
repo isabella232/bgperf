@@ -20,16 +20,16 @@ class FRRouting(Container):
         super(FRR, self).__init__(name, image, host_dir, guest_dir)
 
     @classmethod
-    def build_image(cls, force=False, tag='bgperf/frr', checkout='branch stable/3.0', nocache=False):
+    def build_image(cls, force=False, tag='bgperf/frr', checkout='HEAD', nocache=False):
         cls.dockerfile = '''
 FROM ubuntu:16.04
 WORKDIR /root
 # create users and groups for least-privilege support
-RUN sudo groupadd -g 92 frr
-RUN sudo groupadd -r -g 85 frrvty
-RUN sudo adduser --system --ingroup frr --home /var/run/frr/ \
+RUN groupadd -g 92 frr
+RUN groupadd -r -g 85 frrvty
+RUN adduser --system --ingroup frr --home /var/run/frr/ \
    --gecos "FRR suite" --shell /sbin/nologin frr
-RUN sudo usermod -a -G frrvty frr
+RUN usermod -a -G frrvty frr
 # install dependenciens
 RUN apt-get update && apt-get install -y \
     git autoconf automake libtool make gawk libreadline-dev \
@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN git clone https://github.com/FRRouting/frr.git frr
 # build, including examples and documentation to disable '--disable-doc'
-RUN cd frr && git checkout{0} && ./bootstrap.sh && \
+RUN cd frr && git checkout {0} && ./bootstrap.sh && \
 ./configure \
     --prefix=/usr \
     --enable-exampledir=/usr/share/doc/frr/examples/ \

@@ -1,4 +1,5 @@
-docker
+docker-py
+docker-compose
 pyyaml
 pyroute2
 nsenter
