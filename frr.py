@@ -16,8 +16,12 @@
 from base import *
 
 class FRRouting(Container):
-    def __init__(self, name, host_dir, guest_dir='/root/config', image='bgperf/frr'):
-        super(FRR, self).__init__(name, image, host_dir, guest_dir)
+
+    CONTAINER_NAME = None
+    GUEST_DIR = '/root/config'
+
+    def __init__(self, host_dir, conf, image='bgperf/frr'):
+        super(FRRouting, self).__init__(self.CONTAINER_NAME, image, host_dir, self.GUEST_DIR, conf)
 
     @classmethod
     def build_image(cls, force=False, tag='bgperf/frr', checkout='HEAD', nocache=False):
@@ -57,7 +61,7 @@ RUN cd frr && git checkout {0} && ./bootstrap.sh && \
     --enable-logfile-mask=0640 \
     --enable-rtadv \
     --enable-tcp-zebra \
-    --enable-fpm
+    --enable-fpm \
     --enable-vtysh \
     --with-pkg-git-version \
     --with-pkg-extra-version=-bgperf_frr
@@ -70,7 +74,7 @@ RUN ldconfig
 
 class FRRoutingTarget(FRRouting, Target):
 
-    CONTAINER_NAME = 'bgperf_FRRouting_target'
+    CONTAINER_NAME = 'bgperf_frrouting_target'
     CONFIG_FILE_NAME = 'bgpd.conf'
 
 
@@ -134,8 +138,8 @@ neighbor {0} timers 30 90
 
         self.config_name = name
 
-    def run(self, conf, brname='', cpus=''):
-        ctn = super(FRR, self).run(brname, cpus=cpus)
+    def run(self, conf, brname=''):
+        ctn = super(FRRouting, self).run(brname)
 
         if self.config_name == None:
             self.write_config(conf)

@@ -119,7 +119,7 @@ def bench(args):
     config_dir = '{0}/{1}'.format(args.dir, args.bench_name)
     dckr_net_name = args.docker_network_name or args.bench_name + '-br'
 
-    for target_class in [BIRDTarget, GoBGPTarget, QuaggaTarget, FFRoutingTarget]:
+    for target_class in [BIRDTarget, GoBGPTarget, QuaggaTarget, FRRoutingTarget]:
         if ctn_exists(target_class.CONTAINER_NAME):
             print 'removing target container', target_class.CONTAINER_NAME
             dckr.remove_container(target_class.CONTAINER_NAME, force=True)
