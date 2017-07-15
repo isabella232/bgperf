@@ -20,35 +20,59 @@ class FRR(Container):
         super(FRR, self).__init__(name, image, host_dir, guest_dir)
 
     @classmethod
-    def build_image(cls, force=False, tag='bgperf/frr', checkout='HEAD', nocache=False):
+    def build_image(cls, force=False, tag='bgperf/frr', checkout='branch stable/3.0', nocache=False):
         cls.dockerfile = '''
-FROM ubuntu:latest
+FROM ubuntu:16.04
 WORKDIR /root
+# create users and groups for least-privilege support
+RUN sudo groupadd -g 92 frr
+RUN sudo groupadd -r -g 85 frrvty
+RUN sudo adduser --system --ingroup frr --home /var/run/frr/ \
+   --gecos "FRR suite" --shell /sbin/nologin frr
+RUN sudo usermod -a -G frrvty frr
+# install dependenciens
 RUN apt-get update && apt-get install -y \
-    git autoconf libtool gawk libreadline-dev make bison flex \
-    libpython-dev pkg-config libjson-c-dev libc-ares-dev
-RUN addgroup --system --gid 92 frr
-RUN addgroup --system --gid 85 frrvty
-RUN adduser --system --ingroup frr --home /var/run/frr \
-    --gecos "FRR suite" --shell /bin/false frr
-RUN usermod -G frrvty frr
-RUN git clone --branch stable/3.0 https://github.com/FRRouting/frr.git frr
-RUN cd frr; ./bootstrap.sh; ./configure \
+    git autoconf automake libtool make gawk libreadline-dev \
+    texinfo dejagnu pkg-config libpam0g-dev libjson-c-dev bison flex \
+    python-pytest libc-ares-dev python3-dev libsystemd-dev
+
+RUN git clone https://github.com/FRRouting/frr.git frr
+# build, including examples and documentation to disable '--disable-doc'
+RUN cd frr && git checkout{0} && ./bootstrap.sh && \
+./configure \
     --prefix=/usr \
+    --enable-exampledir=/usr/share/doc/frr/examples/ \
     --localstatedir=/var/run/frr \
     --sbindir=/usr/lib/frr \
     --sysconfdir=/etc/frr \
-    --enable-vtysh \
     --enable-pimd \
+    --enable-watchfrr \
+    --enable-ospfclient=yes \
+    --enable-ospfapi=yes \
     --enable-multipath=64 \
     --enable-user=frr \
     --enable-group=frr \
     --enable-vty-group=frrvty \
-    --disable-doc && \
-    make -j2 && make install
+    --enable-configfile-mask=0640 \
+    --enable-logfile-mask=0640 \
+    --enable-rtadv \
+    --enable-tcp-zebra \
+    --enable-fpm
+    --enable-vtysh \
+    --with-pkg-git-version \
+    --with-pkg-extra-version=-bgperf_frr
+RUN cd frr && make -j2 && make check && make install
+# is this still necessary?
 RUN ldconfig
 '''.format(checkout)
         super(FRR, cls).build_image(force, tag, nocache)
+
+
+class FRRoutingTarget(FRRouting, Target):
+
+    CONTAINER_NAME = 'bgperf_FRRouting_target'
+    CONFIG_FILE_NAME = 'bgpd.conf'
+
 
     def write_config(self, conf, name='bgpd.conf'):
         config = """hostname bgpd
@@ -63,7 +87,7 @@ bgp router-id {1}
 neighbor {0} advertisement-interval 1
 neighbor {0} route-server-client
 neighbor {0} timers 30 90
-""".format(local_addr, n['as'])
+""".format(local_addr, n['as']) # adjust BGP hold-timers if desired
             if 'filter' in n:
                 for p in (n['filter']['in'] if 'in' in n['filter'] else []):
                     c += 'neighbor {0} route-map {1} export\n'.format(local_addr, p)
